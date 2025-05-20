@@ -35,8 +35,14 @@ async function getRecipeDetails(recipe_id) {
     }
 }
 
+async function getRecipesPreview(recipe_ids) {
+  const preview_list = await Promise.all(
+    recipe_ids.map((id) => getRecipeDetails(id))
+  );
+  return preview_list;
+}
 
-
+exports.getRecipesPreview = getRecipesPreview;
 exports.getRecipeDetails = getRecipeDetails;
 
 
