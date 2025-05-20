@@ -6,35 +6,62 @@ const bcrypt = require("bcrypt");
 
 router.post("/Register", async (req, res, next) => {
   try {
-    // parameters exists
-    // valid parameters
-    // username exists
-    let user_details = {
-      username: req.body.username,
-      firstname: req.body.firstname,
-      lastname: req.body.lastname,
-      country: req.body.country,
-      password: req.body.password,
-      email: req.body.email,
-      profilePic: req.body.profilePic
+    const {
+      username,
+      firstname,
+      lastname,
+      country,
+      password,
+      confirmPassword,
+      email,
+      profilePic,
+    } = req.body;
+
+    // === VALIDATIONS ===
+    if (
+      !username || !firstname || !lastname || !country ||
+      !password || !confirmPassword || !email
+    ) {
+      throw { status: 400, message: "Missing required fields" };
     }
-    let users = [];
-    users = await DButils.execQuery("SELECT username from users");
 
-    if (users.find((x) => x.username === user_details.username))
-      throw { status: 409, message: "Username taken" };
+    if (!/^[A-Za-z]{3,8}$/.test(username)) {
+      throw { status: 400, message: "Username must be 3–8 letters only" };
+    }
 
-    // add the new username
-    let hash_password = bcrypt.hashSync(
-      user_details.password,
-      parseInt(process.env.bcrypt_saltRounds)
-    );
+    if (password !== confirmPassword) {
+      throw { status: 400, message: "Passwords do not match" };
+    }
 
+    if (!/^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z0-9!@#$%^&*]{5,10}$/.test(password)) {
+      throw {
+        status: 400,
+        message: "Password must be 5–10 chars, include a number and a special char",
+      };
+    }
+
+    // === Check for existing username ===
+    const users = await DButils.execQuery(
+    "SELECT username FROM users WHERE username = ?",[username]);
+
+    console.log("Check if user exists:", users);
+    if (users.length > 0) {
+      throw { status: 409, message: "Username already taken" };
+    } 
+    console.log("typeof users:", typeof users);
+    console.log("Array.isArray(users):", Array.isArray(users));
+    // === Hash password ===
+    const hash_password = bcrypt.hashSync(password, parseInt(process.env.bcrypt_saltRounds));
+
+    // === Save new user securely ===
     await DButils.execQuery(
-      `INSERT INTO users (username, firstname, lastname, country, password, email, profilePic) VALUES ('${user_details.username}', '${user_details.firstname}', '${user_details.lastname}',
-      '${user_details.country}', '${hash_password}', '${user_details.email}', '${user_details.profilePic}')`
+      `
+      INSERT INTO users (username, first_name, last_name, country, password, email, profile_pic)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [username, firstname, lastname, country, hash_password, email, profilePic || null]
     );
-    res.status(201).send({ message: "user created", success: true });
+
+    res.status(201).send({ message: "User created", success: true });
   } catch (error) {
     next(error);
   }
