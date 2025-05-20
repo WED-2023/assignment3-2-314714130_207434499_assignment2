@@ -10,6 +10,7 @@ const api_domain = "https://api.spoonacular.com/recipes";
 
 
 async function getRecipeInformation(recipe_id) {
+    console.log("API Key:", process.env.spooncular_apiKey);
     return await axios.get(`${api_domain}/${recipe_id}/information`, {
         params: {
             includeNutrition: false,
@@ -35,8 +36,15 @@ async function getRecipeDetails(recipe_id) {
     }
 }
 
+async function getRecipesPreview(recipe_ids) {
+  const preview_list = await Promise.all(
+    recipe_ids.map((id) => getRecipeDetails(id))
+  );
+  return preview_list;
+}
 
 
+exports.getRecipesPreview = getRecipesPreview;
 exports.getRecipeDetails = getRecipeDetails;
 
 
