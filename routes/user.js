@@ -53,6 +53,57 @@ router.get('/favorites', async (req,res,next) => {
 });
 
 
+async function getRecipeDetails(recipe_id, username) {
+  const recipe_info = await getRecipeInformation(recipe_id);
+  const {
+    id,
+    title,
+    readyInMinutes,
+    image,
+    aggregateLikes,
+    vegan,
+    vegetarian,
+    glutenFree
+  } = recipe_info.data;
 
+  let wasWatched = false;
+  let isFavorite = false;
+
+  if (username) {
+    const watched = await DButils.execQuery(
+      "SELECT 1 FROM ViewedRecipes WHERE username = ? AND recipe_id = ?",
+      [username, recipe_id]
+    );
+    wasWatched = watched.length > 0;
+
+    const favorite = await DButils.execQuery(
+      "SELECT 1 FROM FavoriteRecipes WHERE username = ? AND recipe_id = ?",
+      [username, recipe_id]
+    );
+    isFavorite = favorite.length > 0;
+
+    await DButils.execQuery(
+      "INSERT IGNORE INTO ViewedRecipes (username, recipe_id) VALUES (?, ?)",
+      [username, recipe_id]
+    );
+  }
+
+  return {
+    id,
+    title,
+    readyInMinutes,
+    image,
+    popularity: aggregateLikes,
+    vegan,
+    vegetarian,
+    glutenFree,
+    wasWatched,
+    isFavorite
+  };
+}
+
+module.exports = {
+  getRecipeDetails
+};
 
 module.exports = router;
