@@ -92,8 +92,22 @@ async function getPreview(recipe_id, username) {
   };
 }
 
+async function getRandomRecipes(number = 3) {
+  const response = await axios.get(`${api_domain}/random`, {
+    params: {
+      number: number,
+      apiKey: process.env.spooncular_apiKey
+    },
+    timeout: 5000
+  });
+
+  return response.data.recipes;
+}
 
 
+
+
+exports.getRandomRecipes = getRandomRecipes;
 exports.getPreview = getPreview;
 exports.getRecipeDetails = getRecipeDetails;
 

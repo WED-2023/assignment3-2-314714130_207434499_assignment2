@@ -53,57 +53,60 @@ router.get('/favorites', async (req,res,next) => {
 });
 
 
-async function getRecipeDetails(recipe_id, username) {
-  const recipe_info = await getRecipeInformation(recipe_id);
-  const {
-    id,
-    title,
-    readyInMinutes,
-    image,
-    aggregateLikes,
-    vegan,
-    vegetarian,
-    glutenFree
-  } = recipe_info.data;
+// === last 3 recepies viewed for the current user ===
+router.get("/lastViewed", async (req, res, next) => {
+  try {
+    const username = req.session.username;
+    if (!username) throw { status: 401, message: "Unauthorized" };
 
-  let wasWatched = false;
-  let isFavorite = false;
-
-  if (username) {
-    const watched = await DButils.execQuery(
-      "SELECT 1 FROM ViewedRecipes WHERE username = ? AND recipe_id = ?",
-      [username, recipe_id]
+    // Get up to 3 most recently viewed recipe IDs
+    const results = await DButils.execQuery(
+      `SELECT recipe_id
+       FROM viewed_recipes
+       WHERE username = ?
+       ORDER BY viewed_at DESC
+       LIMIT 3`,
+      [username]
     );
-    wasWatched = watched.length > 0;
 
-    const favorite = await DButils.execQuery(
-      "SELECT 1 FROM FavoriteRecipes WHERE username = ? AND recipe_id = ?",
-      [username, recipe_id]
-    );
-    isFavorite = favorite.length > 0;
+    const recipeIds = results.map(r => r.recipe_id);
 
-    await DButils.execQuery(
-      "INSERT IGNORE INTO ViewedRecipes (username, recipe_id) VALUES (?, ?)",
-      [username, recipe_id]
+    // Fetch preview data for each
+    const previewPromises = recipeIds.map(id =>
+      recipe_utils.getPreview(id, username)
     );
+
+    const previews = await Promise.all(previewPromises);
+
+    res.status(200).send(previews);
+  } catch (error) {
+    next(error);
   }
+});
 
-  return {
-    id,
-    title,
-    readyInMinutes,
-    image,
-    popularity: aggregateLikes,
-    vegan,
-    vegetarian,
-    glutenFree,
-    wasWatched,
-    isFavorite
-  };
-}
+// === mark recipe as viewed ===
+router.post("/viewed", async (req, res, next) => {
+  try {
+    const username = req.session?.username;
+    if (!username) throw { status: 401, message: "Unauthorized" };
 
-module.exports = {
-  getRecipeDetails
-};
+    const { recipeId } = req.body;
+    if (!recipeId) throw { status: 400, message: "Missing recipeId" };
+
+    // if the recipe_id exist, update just the timestamp
+    await DButils.execQuery(
+      `INSERT INTO viewed_recipes (username, recipe_id)
+       VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP`,
+      [username, recipeId]
+    );
+
+    res.status(201).send({ success: true, message: "Recipe marked as viewed" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
 
 module.exports = router;
