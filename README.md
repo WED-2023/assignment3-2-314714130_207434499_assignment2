@@ -1,3 +1,34 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/WkLPf7o5)
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-718a45dd9cf7e7f842a935f5ebbe5719a5e09af4491e668f4dbf3b35d5cca122.svg)](https://classroom.github.com/online_ide?assignment_repo_id=11168133&assignment_repo_type=AssignmentRepo)
+# Recipe Management API
 
+This project is a Node.js and Express-based backend for managing users and recipes, including user authentication, recipe search, favorites, viewed recipes, and personal recipe creation.
+
+## Features
+
+- User Registration & Login with secure authentication
+- Recipe Search & Details via Spoonacular API
+- Favorites: Mark and retrieve favorite recipes
+- Recently Viewed: Tracks last 3 recipes viewed
+- User-Created Recipes: Create and view your own recipes
+- Session Management with cookies
+- Docker Support for easy deployment
+
+## API Endpoints
+
+### User Endpoints
+- `POST /Register` - Register a new user
+- `POST /Login` - User login
+- `POST /Logout` - User logout
+
+### Recipe Endpoints
+- `GET /recipes/search` - Search for recipes using Spoonacular
+- `GET /recipes/details/:recipeId` - Get full recipe details
+- `GET /recipes/preview/:recipeId` - Get a preview of a recipe
+- `GET /recipes/random` - Get 3 random recipes
+
+### User Data Endpoints
+- `GET /users/favorites` - Retrieve a user's favorite recipes
+- `POST /users/favorites` - Add a recipe to favorites
+- `GET /users/lastViewed` - Get the last 3 viewed recipes
+- `POST /users/viewed` - Mark a recipe as viewed
+- `POST /users/create` - Create a new user recipe
+- `GET /users/myRecipes` - Retrieve recipes created by the logged-in user
