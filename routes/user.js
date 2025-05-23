@@ -108,5 +108,80 @@ router.post("/viewed", async (req, res, next) => {
 });
 
 
+// === create recipe ===
+router.post("/create", async (req, res, next) => {
+  try {
+    const username = req.session?.username;
+    if (!username) throw { status: 401, message: "Unauthorized" };
+
+    const {
+      title,
+      image,
+      readyInMinutes,
+      popularity,
+      vegan,
+      vegetarian,
+      glutenFree,
+      instructions,
+      ingredients,
+    } = req.body;
+
+    const recipe_id = await user_utils.createRecipe({
+      title,
+      image,
+      readyInMinutes,
+      popularity,
+      vegan,
+      vegetarian,
+      glutenFree,
+      instructions,
+      ingredients,
+      username,
+    });
+
+    res.status(201).send({ success: true, recipe_id });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
+
+// === view my own recipes ===
+router.get("/myRecipes", async (req, res, next) => {
+  try {
+    const username = req.session?.username;
+    if (!username) throw { status: 401, message: "Unauthorized" };
+
+    const recipes = await user_utils.getUserCreatedRecipePreviews(username);
+    res.status(200).send(recipes);
+  } catch (error) {
+    next(error);
+  }
+}); 
+
+// === mark self created recipe as viewed ===
+router.post("/selfcreatedviewed", async (req, res, next) => {
+  try {
+    const username = req.session?.username;
+    if (!username) throw { status: 401, message: "Unauthorized" };
+
+    const { recipeId } = req.body;
+    if (!recipeId) throw { status: 400, message: "Missing recipeId" };
+
+    // if the recipe_id exist, update just the timestamp
+    await DButils.execQuery(
+      `INSERT INTO viewed_selfcreated_recipes (username, recipe_id)
+       VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP`,
+      [username, recipeId]
+    );
+
+    res.status(201).send({ success: true, message: "Recipe marked as viewed" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 module.exports = router;

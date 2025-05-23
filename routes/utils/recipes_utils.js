@@ -1,6 +1,8 @@
+require("dotenv").config();
 const axios = require("axios");
 const DButils = require("./DButils");
 const api_domain = "https://api.spoonacular.com/recipes";
+const apiKey = process.env.spooncular_apiKey;
 
 
 
@@ -18,7 +20,7 @@ async function getRecipeInformation(recipe_id) {
       includeNutrition: false,
       apiKey: process.env.spooncular_apiKey
     },
-    timeout: 5000  // optional: to avoid hanging forever
+    timeout: 5000  //  to avoid hanging forever
   });
 
   console.timeEnd(`Spoonacular ${recipe_id}`);
@@ -27,7 +29,7 @@ async function getRecipeInformation(recipe_id) {
 
 async function getRecipeDetails(recipe_id) {
     let recipe_info = await getRecipeInformation(recipe_id);
-    let { id, title, readyInMinutes, image, aggregateLikes, vegan, vegetarian, glutenFree } = recipe_info.data;
+    let { id, title, readyInMinutes, image, aggregateLikes, vegan, vegetarian, glutenFree,instructions  } = recipe_info.data;
 
     return {
         id: id,
@@ -38,6 +40,7 @@ async function getRecipeDetails(recipe_id) {
         vegan: vegan,
         vegetarian: vegetarian,
         glutenFree: glutenFree,
+        instructions: instructions,
         
     }
 }
@@ -104,9 +107,34 @@ async function getRandomRecipes(number = 3) {
   return response.data.recipes;
 }
 
+async function searchRecipes({ query, cuisine, diet, intolerances,number = 5 }) {
+  const apiKey = process.env.spooncular_apiKey;
+
+  const response = await axios.get(`${api_domain}/complexSearch`, {
+    params: {
+      query,
+      cuisine,
+      diet,
+      intolerances,
+      number,
+      addRecipeInformation: true, 
+      apiKey,
+    },
+    timeout: 8000, //  longer timeout to avoid Spoonacular timeouts
+  });
+
+  return response.data;
+}
 
 
 
+
+
+
+
+
+
+exports.searchRecipes = searchRecipes;
 exports.getRandomRecipes = getRandomRecipes;
 exports.getPreview = getPreview;
 exports.getRecipeDetails = getRecipeDetails;
