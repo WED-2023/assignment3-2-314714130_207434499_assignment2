@@ -183,5 +183,27 @@ router.post("/selfcreatedviewed", async (req, res, next) => {
   }
 });
 
+// === like a recipe ===
+router.post("/like", async (req, res, next) => {
+  try {
+    const username = req.session?.username;
+    const { recipe_id } = req.body;
 
+    if (!username) throw { status: 401, message: "Unauthorized" };
+    if (!recipe_id) throw { status: 400, message: "Missing recipe_id" };
+
+    await DButils.execQuery(`
+      INSERT INTO recipe_likes (recipe_id, username)
+      VALUES (${recipe_id}, '${username}')
+    `);
+
+    res.status(200).send({ message: "Recipe liked successfully" });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      res.status(400).send({ message: "Already liked this recipe" });
+    } else {
+      next(error);
+    }
+  }
+});
 module.exports = router;

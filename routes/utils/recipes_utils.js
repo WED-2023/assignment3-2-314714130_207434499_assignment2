@@ -29,6 +29,8 @@ async function getRecipeInformation(recipe_id) {
 
 async function getRecipeDetails(recipe_id) {
     let recipe_info = await getRecipeInformation(recipe_id);
+    const likes = await getTotalLikes(recipe_id);
+
     let { id, title, readyInMinutes, image, aggregateLikes, vegan, vegetarian, glutenFree,instructions  } = recipe_info.data;
 
     return {
@@ -36,7 +38,7 @@ async function getRecipeDetails(recipe_id) {
         title: title,
         readyInMinutes: readyInMinutes,
         image: image,
-        popularity: aggregateLikes,
+        popularity: likes,
         vegan: vegan,
         vegetarian: vegetarian,
         glutenFree: glutenFree,
@@ -48,13 +50,13 @@ async function getRecipeDetails(recipe_id) {
 
 
 async function getPreview(recipe_id, username) {
+  const likes = await getTotalLikes(recipe_id);
   let recipe_info = await getRecipeInformation(recipe_id);
   let {
     id,
     title,
     readyInMinutes,
     image,
-    aggregateLikes,
     vegan,
     vegetarian,
     glutenFree
@@ -86,7 +88,7 @@ async function getPreview(recipe_id, username) {
     title,
     readyInMinutes,
     image,
-    popularity: aggregateLikes,
+    popularity: likes,
     vegan,
     vegetarian,
     glutenFree,
@@ -126,6 +128,19 @@ async function searchRecipes({ query, cuisine, diet, intolerances,number = 5 }) 
   return response.data;
 }
 
+async function getTotalLikes(recipe_id) {
+  const dbResult = await DButils.execQuery(`
+    SELECT COUNT(*) AS count FROM recipe_likes WHERE recipe_id = ${recipe_id}
+  `);
+
+  const dbLikes = dbResult[0].count;
+
+  // Get Spoonacular likes
+  const spoonacularInfo = await getRecipeInformation(recipe_id);
+  const spoonacularLikes = spoonacularInfo.data.aggregateLikes || 0;
+
+  return dbLikes + spoonacularLikes;
+}
 
 
 
@@ -133,7 +148,7 @@ async function searchRecipes({ query, cuisine, diet, intolerances,number = 5 }) 
 
 
 
-
+exports.getTotalLikes = getTotalLikes;
 exports.searchRecipes = searchRecipes;
 exports.getRandomRecipes = getRandomRecipes;
 exports.getPreview = getPreview;
