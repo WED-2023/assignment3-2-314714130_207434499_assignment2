@@ -31,20 +31,27 @@ async function getRecipeDetails(recipe_id) {
     let recipe_info = await getRecipeInformation(recipe_id);
     const likes = await getTotalLikes(recipe_id);
 
-    let { id, title, readyInMinutes, image, aggregateLikes, vegan, vegetarian, glutenFree,instructions  } = recipe_info.data;
+    let { id, title, readyInMinutes, image,  vegan, vegetarian, glutenFree,instructions, servings, extendedIngredients  } = recipe_info.data;
+
+    const ingredients = extendedIngredients.map(ing => ({
+    name: ing.name,
+    amount: ing.amount,
+    unit: ing.unit
+  }));
 
     return {
-        id: id,
-        title: title,
-        readyInMinutes: readyInMinutes,
-        image: image,
-        popularity: likes,
-        vegan: vegan,
-        vegetarian: vegetarian,
-        glutenFree: glutenFree,
-        instructions: instructions,
-        
-    }
+    id: id,
+    title: title,
+    readyInMinutes: readyInMinutes,
+    image: image,
+    popularity: likes,
+    vegan: vegan,
+    vegetarian: vegetarian,
+    glutenFree: glutenFree,
+    instructions: instructions,
+    servings: servings,
+    ingredients: ingredients
+  };
 }
 
 

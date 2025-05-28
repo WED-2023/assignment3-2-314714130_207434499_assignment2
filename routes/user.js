@@ -123,6 +123,7 @@ router.post("/create", async (req, res, next) => {
       vegetarian,
       glutenFree,
       instructions,
+      servings, 
       ingredients,
     } = req.body;
 
@@ -135,6 +136,7 @@ router.post("/create", async (req, res, next) => {
       vegetarian,
       glutenFree,
       instructions,
+      servings, 
       ingredients,
       username,
     });
@@ -151,14 +153,31 @@ router.post("/create", async (req, res, next) => {
 router.get("/myRecipes", async (req, res, next) => {
   try {
     const username = req.session?.username;
-    if (!username) throw { status: 401, message: "Unauthorized" };
+    if (!username) {
+      throw { status: 401, message: "User not logged in" };
+    }
 
-    const recipes = await user_utils.getUserCreatedRecipePreviews(username);
+    const recipes = await user_utils.getUserCreatedRecipes(username);
     res.status(200).send(recipes);
   } catch (error) {
     next(error);
   }
-}); 
+});
+
+// === view my own recipe previews ===
+router.get("/myPreviews", async (req, res, next) => {
+  try {
+    const username = req.session?.username;
+    if (!username) {
+      throw { status: 401, message: "Unauthorized" };
+    }
+
+    const previews = await user_utils.getUserCreatedRecipePreviews(username);
+    res.status(200).send(previews);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // === mark self created recipe as viewed ===
 router.post("/selfcreatedviewed", async (req, res, next) => {

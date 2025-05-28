@@ -19,15 +19,17 @@ async function createRecipe({
   vegetarian,
   glutenFree,
   instructions,
+  servings,
   ingredients,
-  username,
+  username
 }) {
   // Insert recipe metadata
   const insertRecipeQuery = `
-    INSERT INTO recipes
-    (username,title, image, readyInMinutes, popularity, vegan, vegetarian, glutenFree, instructions )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO recipes 
+    (username, title, image, readyInMinutes, popularity, vegan, vegetarian, glutenFree, instructions, servings)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
+
   const result = await DButils.execQuery(insertRecipeQuery, [
     username,
     title,
@@ -38,15 +40,16 @@ async function createRecipe({
     vegetarian,
     glutenFree,
     instructions,
-    
+    servings
   ]);
+
   const recipe_id = result.insertId;
 
-  // Insert ingredients
+  // Insert each ingredient
   for (const ing of ingredients) {
     await DButils.execQuery(
-      `INSERT INTO recipe_ingredients (recipe_id, name, quantity) VALUES (?, ?, ?)`,
-      [recipe_id, ing.name, ing.quantity]
+      `INSERT INTO recipe_ingredients (recipe_id, name, amount, unit) VALUES (?, ?, ?, ?)`,
+      [recipe_id, ing.name, ing.amount, ing.unit]
     );
   }
 
@@ -80,6 +83,67 @@ async function getUserCreatedRecipePreviews(username) {
   }));
 }
 
+async function getUserCreatedRecipes(username) {
+  const rows = await DButils.execQuery(
+    `
+    SELECT 
+      r.id,
+      r.title,
+      r.servings,
+      r.instructions,
+      r.readyInMinutes,
+      r.popularity,
+      r.vegan,
+      r.vegetarian,
+      r.glutenFree,
+      r.image,
+      i.name AS ingredient_name,
+      i.amount,
+      i.unit
+    FROM 
+      recipes r
+    LEFT JOIN 
+      recipe_ingredients i 
+    ON 
+       r.id = i.recipe_id
+    WHERE 
+      r.username = ?
+    `,
+    [username]
+  );
+
+  // Transform flat results to grouped format
+  const grouped = {};
+  rows.forEach(row => {
+    if (!grouped[row.id]) {
+      grouped[row.id] = {
+        id: row.id,
+        title: row.title,
+        servings: row.servings,
+        instructions: row.instructions,
+        readyInMinutes: row.readyInMinutes,
+        popularity: row.popularity,
+        vegan: row.vegan,
+        vegetarian: row.vegetarian,
+        glutenFree: row.glutenFree,
+        image: row.image,
+        ingredients: []
+      };
+    }
+
+    if (row.ingredient_name) {
+      grouped[row.id].ingredients.push({
+        name: row.ingredient_name,
+        amount: row.amount,
+        unit: row.unit
+      });
+    }
+  });
+
+  return Object.values(grouped);
+}
+exports.getUserCreatedRecipes = getUserCreatedRecipes;
+exports.getUserCreatedRecipes = getUserCreatedRecipes;
 exports.getUserCreatedRecipePreviews = getUserCreatedRecipePreviews;
 exports.createRecipe = createRecipe;
 exports.markAsFavorite = markAsFavorite;
