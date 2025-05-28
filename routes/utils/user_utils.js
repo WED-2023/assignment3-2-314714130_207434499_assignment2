@@ -142,6 +142,20 @@ async function getUserCreatedRecipes(username) {
 
   return Object.values(grouped);
 }
+
+async function getFamilyRecipes(username) {
+  const query = `
+    SELECT family_member_name, relation, occasion, ingredients, preparation
+    FROM family_recipes
+    WHERE username = ?;
+  `;
+  return await DButils.execQuery(query, [username]);
+}
+
+
+
+
+exports.getFamilyRecipes = getFamilyRecipes;
 exports.getUserCreatedRecipes = getUserCreatedRecipes;
 exports.getUserCreatedRecipes = getUserCreatedRecipes;
 exports.getUserCreatedRecipePreviews = getUserCreatedRecipePreviews;

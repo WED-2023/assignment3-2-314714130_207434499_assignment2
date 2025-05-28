@@ -225,4 +225,17 @@ router.post("/like", async (req, res, next) => {
     }
   }
 });
+
+// === get family recipes ===
+router.get("/familyRecipes", async (req, res, next) => {
+  try {
+    const username = req.session?.username;
+    if (!username) throw { status: 401, message: "Unauthorized" };
+
+    const recipes = await user_utils.getFamilyRecipes(username);
+    res.status(200).send(recipes);
+  } catch (err) {
+    next(err);
+  }
+});
 module.exports = router;
