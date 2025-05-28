@@ -9,10 +9,24 @@ Changes from Spec to Implementation:
 - GET /myRecipes
 
 2. Additional Endpoints (Not in Spec):
-- POST /viewed
-- GET /lastViewed
-- POST /selfcreatedviewed
-- GET /recipes/lastSearch
-- GET /recipes/preview/{recipeId}
-- GET /recipes/random
 
+Recipe Interaction:
+- POST /viewed – Mark a recipe as viewed by the current user
+- GET /lastViewed – Retrieve the last three viewed recipes by the user
+- GET /recipes/preview/{recipeId} – Retrieve preview information for a specific recipe
+- GET /recipes/random – Retrieve three random recipes from Spoonacular
+- POST /likes – Add a like to a recipe (aggregates with Spoonacular likes)
+- GET /recipes/likes/{recipeId} – Get total likes (Spoonacular + local DB)
+
+Search Tracking:
+- GET /recipes/lastSearch – Returns the last search query made by the user
+
+User-Created Recipes:
+- POST /selfcreatedviewed – Mark self-created recipe as viewed
+- GET /user/created/previews – Returns preview info for recipes created by the user
+- GET /user/created – Returns full info for user-created recipes (with ingredients and instructions)
+
+Family Recipes:
+- POST /family – Add a new family recipe (with separate table)
+- GET /family – Returns metadata for family recipes of the current user (no ingredients or instructions)
+- GET /family/details/{recipeId} – Returns full family recipe details including ingredients and preparation
