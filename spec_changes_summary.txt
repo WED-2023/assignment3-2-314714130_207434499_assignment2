@@ -1,0 +1,18 @@
+Changes from Spec to Implementation:
+
+1. Implemented Endpoints (Aligned with Spec):
+- GET /recipes/details/{recipeId}
+- GET /recipes/search
+- POST /favorites
+- GET /favorites
+- POST /create
+- GET /myRecipes
+
+2. Additional Endpoints (Not in Spec):
+- POST /viewed
+- GET /lastViewed
+- POST /selfcreatedviewed
+- GET /recipes/lastSearch
+- GET /recipes/preview/{recipeId}
+- GET /recipes/random
+
