@@ -50,6 +50,13 @@ app.get("/",function(req,res)
 // app.use(cors(corsConfig));
 // app.options("*", cors(corsConfig));
 
+const corsConfig = {
+  origin: true, // Allow any origin
+  credentials: true // Allow cookies/session
+};
+app.use(cors(corsConfig));
+app.options("*", cors(corsConfig));
+
 var port = process.env.PORT || "3000"; //local=3000 remote=80
 //#endregion
 const user = require("./routes/user");

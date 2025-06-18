@@ -31,13 +31,7 @@ async function getRecipeDetails(recipe_id) {
     let recipe_info = await getRecipeInformation(recipe_id);
     const likes = await getTotalLikes(recipe_id);
 
-    let { id, title, readyInMinutes, image,  vegan, vegetarian, glutenFree,instructions, servings, extendedIngredients  } = recipe_info.data;
-
-    const ingredients = extendedIngredients.map(ing => ({
-    name: ing.name,
-    amount: ing.amount,
-    unit: ing.unit
-  }));
+    let { id, title, readyInMinutes, image,  vegan, vegetarian, glutenFree,instructions, servings, extendedIngredients, analyzedInstructions  } = recipe_info.data;
 
     return {
     id: id,
@@ -50,7 +44,8 @@ async function getRecipeDetails(recipe_id) {
     glutenFree: glutenFree,
     instructions: instructions,
     servings: servings,
-    ingredients: ingredients
+    extendedIngredients: extendedIngredients,
+    analyzedInstructions: analyzedInstructions
   };
 }
 
@@ -113,7 +108,18 @@ async function getRandomRecipes(number = 3) {
     timeout: 5000
   });
 
-  return response.data.recipes;
+  // Get total likes for each recipe
+  const recipesWithLikes = await Promise.all(
+    response.data.recipes.map(async (recipe) => {
+      const totalLikes = await getTotalLikes(recipe.id);
+      return {
+        ...recipe,
+        popularity: totalLikes
+      };
+    })
+  );
+
+  return recipesWithLikes;
 }
 
 async function searchRecipes({ query, cuisine, diet, intolerances,number = 5 }) {
