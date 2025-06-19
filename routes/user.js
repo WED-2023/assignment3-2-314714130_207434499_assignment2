@@ -38,17 +38,28 @@ router.post('/favorites', async (req,res,next) => {
 /**
  * This path returns the favorites recipes that were saved by the logged-in user
  */
-router.get('/favorites', async (req,res,next) => {
-  try{
+router.get('/favorites', async (req, res, next) => {
+  try {
     const username = req.session.username;
-    let favorite_recipes = {};
-    const recipes_id = await user_utils.getFavoriteRecipes(username);
-    let recipes_id_array = [];
-    recipes_id.map((element) => recipes_id_array.push(element.recipe_id)); //extracting the recipe ids into array
-    const results = await recipe_utils.getRecipesPreview(recipes_id_array);
-    res.status(200).send(results);
-  } catch(error){
-    next(error); 
+    const recipes = await user_utils.getFavoriteRecipes(username);
+    res.status(200).send(recipes);
+  } catch (error) {
+    console.error("Error in /favorites route:", error);
+    res.status(500).send({ message: "Failed to fetch favorites", error: error.message });
+  }
+});
+
+/**
+ * This path removes a recipe from the favorites list of the logged-in user
+ */
+router.delete('/favorites/:recipeId', async (req, res, next) => {
+  try {
+    const username = req.session.username;
+    const recipe_id = req.params.recipeId;
+    await user_utils.removeFromFavorites(username, recipe_id);
+    res.status(200).send("The Recipe successfully removed from favorites");
+  } catch (error) {
+    next(error);
   }
 });
 
@@ -238,4 +249,19 @@ router.get("/familyRecipes", async (req, res, next) => {
     next(err);
   }
 });
+
+// === get ingredients for a recipe ===
+router.get("/ingredients/:recipeId", async (req, res, next) => {
+  try {
+    const recipeId = req.params.recipeId;
+    const ingredients = await DButils.execQuery(
+      `SELECT name, amount, unit FROM recipe_ingredients WHERE recipe_id = ?`,
+      [recipeId]
+    );
+    res.status(200).send(ingredients);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

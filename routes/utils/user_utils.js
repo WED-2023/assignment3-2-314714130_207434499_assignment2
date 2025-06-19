@@ -1,14 +1,47 @@
 const DButils = require("./DButils");
+const recipe_utils = require("./recipes_utils");
 
-async function markAsFavorite(username, recipe_id){
-    await DButils.execQuery(`insert into users_favorite values ('${username}',${recipe_id})`);
+async function markAsFavorite(username, recipe_id) {
+    await DButils.execQuery(
+        'INSERT INTO users_favorite (username, recipe_id) VALUES (?, ?)',
+        [username, recipe_id]
+    );
 }
 
-async function getFavoriteRecipes(username){
-    const recipes_id = await DButils.execQuery(`select recipe_id from users_favorite where username='${username}'`);
-    return recipes_id;
+async function removeFromFavorites(username, recipe_id) {
+    await DButils.execQuery(
+        'DELETE FROM users_favorite WHERE username = ? AND recipe_id = ?',
+        [username, recipe_id]
+    );
 }
 
+async function getFavoriteRecipes(username) {
+    try {
+        // Get favorite recipe IDs
+        const recipes_id = await DButils.execQuery(
+            'SELECT recipe_id FROM users_favorite WHERE username = ?',
+            [username]
+        );
+
+        // Get full recipe details for each favorite
+        const recipesPromises = recipes_id.map(async (recipe) => {
+            try {
+                return await recipe_utils.getPreview(recipe.recipe_id, username);
+            } catch (error) {
+                console.error(`Error fetching recipe ${recipe.recipe_id}:`, error);
+                return null;
+            }
+        });
+
+        const recipes = await Promise.all(recipesPromises);
+        
+        // Filter out any null results from failed fetches
+        return recipes.filter(recipe => recipe !== null);
+    } catch (error) {
+        console.error("Error in getFavoriteRecipes:", error);
+        throw error;
+    }
+}
 
 async function createRecipe({
   title,
@@ -145,7 +178,7 @@ async function getUserCreatedRecipes(username) {
 
 async function getFamilyRecipes(username) {
   const query = `
-    SELECT family_member_name, relation, occasion, ingredients, preparation
+    SELECT recipe_id as id, family_member_name, relation, occasion, ingredients, preparation
     FROM family_recipes
     WHERE username = ?;
   `;
@@ -161,4 +194,5 @@ exports.getUserCreatedRecipes = getUserCreatedRecipes;
 exports.getUserCreatedRecipePreviews = getUserCreatedRecipePreviews;
 exports.createRecipe = createRecipe;
 exports.markAsFavorite = markAsFavorite;
+exports.removeFromFavorites = removeFromFavorites;
 exports.getFavoriteRecipes = getFavoriteRecipes;

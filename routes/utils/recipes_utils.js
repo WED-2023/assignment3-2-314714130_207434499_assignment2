@@ -28,62 +28,102 @@ async function getRecipeInformation(recipe_id) {
 }
 
 async function getRecipeDetails(recipe_id) {
-    let recipe_info = await getRecipeInformation(recipe_id);
-    const likes = await getTotalLikes(recipe_id);
+  console.log(`[DEBUG] Fetching recipe details for ID: ${recipe_id}`);
+  
+  // Try to get from your DB first
+  const dbResults = await DButils.execQuery(
+    "SELECT * FROM recipes WHERE id = ?",
+    [recipe_id]
+  );
+  
+  console.log(`[DEBUG] Database results for recipe ${recipe_id}:`, dbResults.length > 0 ? 'Found in DB' : 'Not found in DB');
+  
+  if (dbResults.length > 0) {
+    const recipe = dbResults[0];
+    console.log(`[DEBUG] Recipe from DB:`, { id: recipe.id, title: recipe.title, username: recipe.username });
+    
+    let analyzedInstructions = [];
+    let instructions = recipe.instructions;
 
-    let { id, title, readyInMinutes, image,  vegan, vegetarian, glutenFree,instructions, servings, extendedIngredients, analyzedInstructions  } = recipe_info.data;
+    // Try to parse as JSON, fallback to plain text
+    if (instructions && instructions !== 'null') {
+      try {
+        const parsed = JSON.parse(instructions);
+        if (Array.isArray(parsed)) {
+          analyzedInstructions = parsed;
+          // Optionally, also create a plain text version for 'instructions'
+          instructions = parsed.map(instr => 
+            (instr.steps || []).map(s => s.step).join('\n')
+          ).join('\n');
+        }
+      } catch (e) {
+        // Not JSON, treat as plain text
+        analyzedInstructions = [{
+          steps: [{ step: instructions }]
+        }];
+      }
+    } else {
+      analyzedInstructions = [{ steps: [] }];
+      instructions = '';
+    }
 
-    return {
-    id: id,
-    title: title,
-    readyInMinutes: readyInMinutes,
-    image: image,
-    popularity: likes,
-    vegan: vegan,
-    vegetarian: vegetarian,
-    glutenFree: glutenFree,
-    instructions: instructions,
-    servings: servings,
-    extendedIngredients: extendedIngredients,
-    analyzedInstructions: analyzedInstructions
-  };
-}
+    // Fetch ingredients from recipe_ingredients table
+    let extendedIngredients = [];
+    try {
+      console.log(`[DEBUG] Fetching ingredients for recipe ${recipe_id} from recipe_ingredients table`);
+      const ingredientsResults = await DButils.execQuery(
+        "SELECT name, amount, unit FROM recipe_ingredients WHERE recipe_id = ?",
+        [recipe_id]
+      );
+      
+      console.log(`[DEBUG] Ingredients query result:`, ingredientsResults);
+      console.log(`[DEBUG] Found ${ingredientsResults.length} ingredients`);
+      
+      extendedIngredients = ingredientsResults.map(ing => ({
+        name: ing.name,
+        amount: ing.amount,
+        unit: ing.unit,
+        original: `${ing.amount} ${ing.unit} ${ing.name}`
+      }));
+      
+      console.log(`[DEBUG] Formatted ingredients:`, extendedIngredients);
+    } catch (error) {
+      console.log("Could not fetch ingredients from recipe_ingredients table:", error);
+      // Fallback to ingredients column if it exists
+      extendedIngredients = recipe.ingredients && recipe.ingredients !== 'null' ? JSON.parse(recipe.ingredients) : [];
+      console.log(`[DEBUG] Using fallback ingredients:`, extendedIngredients);
+    }
 
-
-
-async function getPreview(recipe_id, username) {
-  const likes = await getTotalLikes(recipe_id);
-  let recipe_info = await getRecipeInformation(recipe_id);
-  let {
-    id,
-    title,
-    readyInMinutes,
-    image,
-    vegan,
-    vegetarian,
-    glutenFree
-  } = recipe_info.data;
-
-  let wasWatched = false;
-  let isFavorite = false;
-
-  if (username) {
-    const watched = await DButils.execQuery(
-      "SELECT 1 FROM viewed_recipes WHERE username = ? AND recipe_id = ?",
-      [username, recipe_id]
-    );
-    wasWatched = watched.length > 0;
-
-    const favorite = await DButils.execQuery(
-      "SELECT 1 FROM users_favorite WHERE username = ? AND recipe_id = ?",
-      [username, recipe_id]
-    );
-    isFavorite = favorite.length > 0;
-    // wasWatched = false;
-    // isFavorite = false;
-
-
+    const result = {
+      id: recipe.id,
+      title: recipe.title,
+      readyInMinutes: recipe.readyInMinutes,
+      image: recipe.image,
+      popularity: recipe.popularity,
+      vegan: recipe.vegan,
+      vegetarian: recipe.vegetarian,
+      glutenFree: recipe.glutenFree,
+      instructions: instructions,
+      servings: recipe.servings,
+      extendedIngredients: extendedIngredients,
+      analyzedInstructions: analyzedInstructions
+    };
+    
+    console.log(`[DEBUG] Final result for recipe ${recipe_id}:`, {
+      ...result,
+      extendedIngredientsCount: result.extendedIngredients.length
+    });
+    
+    return result;
   }
+  
+  console.log(`[DEBUG] Recipe ${recipe_id} not found in DB, fetching from Spoonacular`);
+  
+  // Otherwise, fetch from Spoonacular
+  let recipe_info = await getRecipeInformation(recipe_id);
+  const likes = await getTotalLikes(recipe_id);
+
+  let { id, title, readyInMinutes, image, vegan, vegetarian, glutenFree, instructions, servings, extendedIngredients, analyzedInstructions } = recipe_info.data;
 
   return {
     id,
@@ -94,9 +134,64 @@ async function getPreview(recipe_id, username) {
     vegan,
     vegetarian,
     glutenFree,
-    wasWatched,
-    isFavorite
+    instructions,
+    servings,
+    extendedIngredients,
+    analyzedInstructions
   };
+}
+
+
+
+async function getPreview(recipe_id, username) {
+  try {
+    const likes = await getTotalLikes(recipe_id);
+    let recipe_info = await getRecipeInformation(recipe_id);
+    let {
+      id,
+      title,
+      readyInMinutes,
+      image,
+      vegan,
+      vegetarian,
+      glutenFree
+    } = recipe_info.data;
+
+    let wasWatched = false;
+    let isFavorite = false;
+
+    if (username) {
+      // Check if recipe was watched
+      const watched = await DButils.execQuery(
+        "SELECT 1 FROM viewed_recipes WHERE username = ? AND recipe_id = ?",
+        [username, recipe_id]
+      );
+      wasWatched = watched.length > 0;
+
+      // Check if recipe is favorite
+      const favorite = await DButils.execQuery(
+        "SELECT 1 FROM users_favorite WHERE username = ? AND recipe_id = ?",
+        [username, recipe_id]
+      );
+      isFavorite = favorite.length > 0;
+    }
+
+    return {
+      id,
+      title,
+      readyInMinutes,
+      image,
+      popularity: likes,
+      vegan,
+      vegetarian,
+      glutenFree,
+      wasWatched,
+      isFavorite
+    };
+  } catch (error) {
+    console.error(`Error in getPreview for recipe ${recipe_id}:`, error);
+    throw error;
+  }
 }
 
 async function getRandomRecipes(number = 3) {
@@ -108,18 +203,24 @@ async function getRandomRecipes(number = 3) {
     timeout: 5000
   });
 
-  // Get total likes for each recipe
-  const recipesWithLikes = await Promise.all(
+  // Format recipes into our standard preview format
+  const formattedRecipes = await Promise.all(
     response.data.recipes.map(async (recipe) => {
       const totalLikes = await getTotalLikes(recipe.id);
       return {
-        ...recipe,
-        popularity: totalLikes
+        id: recipe.id,
+        title: recipe.title,
+        readyInMinutes: recipe.readyInMinutes,
+        image: recipe.image,
+        popularity: totalLikes,
+        vegan: recipe.vegan,
+        vegetarian: recipe.vegetarian,
+        glutenFree: recipe.glutenFree
       };
     })
   );
 
-  return recipesWithLikes;
+  return formattedRecipes;
 }
 
 async function searchRecipes({ query, cuisine, diet, intolerances,number = 5 }) {
@@ -142,9 +243,10 @@ async function searchRecipes({ query, cuisine, diet, intolerances,number = 5 }) 
 }
 
 async function getTotalLikes(recipe_id) {
-  const dbResult = await DButils.execQuery(`
-    SELECT COUNT(*) AS count FROM recipe_likes WHERE recipe_id = ${recipe_id}
-  `);
+  const dbResult = await DButils.execQuery(
+    "SELECT COUNT(*) AS count FROM recipe_likes WHERE recipe_id = ?",
+    [recipe_id]
+  );
 
   const dbLikes = dbResult[0].count;
 
