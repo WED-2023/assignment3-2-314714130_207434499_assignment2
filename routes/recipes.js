@@ -35,8 +35,31 @@ router.get("/preview/:recipeId", async (req, res, next) => {
 // === 3 random recepies ===
 router.get("/random", async (req, res, next) => {
   try {
+    const username = req.session?.username;
     const randomRecipes = await recipes_utils.getRandomRecipes(3);
-    res.status(200).send(randomRecipes);
+    
+    // Add viewed status for logged-in users
+    if (username) {
+      const recipesWithStatus = await Promise.all(
+        randomRecipes.map(async (recipe) => {
+          const preview = await recipes_utils.getPreview(recipe.id, username);
+          return {
+            ...recipe,
+            viewed: preview.viewed,
+            isFavorite: preview.isFavorite
+          };
+        })
+      );
+      res.status(200).send(recipesWithStatus);
+    } else {
+      // For non-logged-in users, add default viewed status
+      const recipesWithDefaults = randomRecipes.map(recipe => ({
+        ...recipe,
+        viewed: false,
+        isFavorite: false
+      }));
+      res.status(200).send(recipesWithDefaults);
+    }
   } catch (error) {
     next(error);
   }
@@ -67,18 +90,33 @@ router.get("/search", async (req, res, next) => {
       throw { status: 500, message: "Invalid response from Spoonacular API" };
     }
 
-    // Return basic preview 
-    const previewResults = spoonacularResponse.results.map((recipe) => ({
-      id: recipe.id,
-      title: recipe.title,
-      readyInMinutes: recipe.readyInMinutes,
-      image: recipe.image,
-      popularity: recipe.aggregateLikes,
-      vegan: recipe.vegan,
-      vegetarian: recipe.vegetarian,
-      glutenFree: recipe.glutenFree,
-      
-    }));
+    // Return basic preview with viewed status
+    const previewResults = await Promise.all(
+      spoonacularResponse.results.map(async (recipe) => {
+        let viewed = false;
+        let isFavorite = false;
+
+        // Check if recipe was viewed by the logged-in user
+        if (username) {
+          const viewedResult = await recipes_utils.getPreview(recipe.id, username);
+          viewed = viewedResult.viewed;
+          isFavorite = viewedResult.isFavorite;
+        }
+
+        return {
+          id: recipe.id,
+          title: recipe.title,
+          readyInMinutes: recipe.readyInMinutes,
+          image: recipe.image,
+          popularity: recipe.aggregateLikes,
+          vegan: recipe.vegan,
+          vegetarian: recipe.vegetarian,
+          glutenFree: recipe.glutenFree,
+          viewed: viewed,
+          isFavorite: isFavorite
+        };
+      })
+    );
 
     res.status(200).send(previewResults);
   } catch (error) {

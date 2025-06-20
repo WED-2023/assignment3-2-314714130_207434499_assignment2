@@ -185,7 +185,7 @@ async function getPreview(recipe_id, username) {
       vegan,
       vegetarian,
       glutenFree,
-      wasWatched,
+      viewed: wasWatched,
       isFavorite
     };
   } catch (error) {
